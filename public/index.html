@@ -5,29 +5,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
+    <link rel="stylesheet" href="style.css">
     <title>Document</title>
 </head>
 
 <body>
-    <h1>Hello World</h1>
-    <input type="file" id="file">
+    <div id="container">
+        <h1>画像リサイズ</h1>
+        <p>ファイルを洗濯すると自動的に画像がリサイズされ、ダウンロードが始まります。</p>
+        <p>不具合がある場合、一度ページを更新すると上手くいく場合があります。</p>
+        <p></p>
+        <div id="flexBox">
+            <div id="flexBox__single">
+                <p>ファイルが１つの場合</p>
+                <input type="file" class="file">
+                <div id="dropBox">１つのファイルをドラッグ＆ドロップ</div>
+            </div>
+
+            <div id="flexBox__single">
+                <p>フォルダから送信する</p>
+                <input type="file" class="file" webkitdirectory>
+            </div>
+        </div>
+    </div>
     <script>
-        const file = document.querySelector("#file");
-        file.addEventListener("change", e => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file.files[0]);
-            reader.onload = function (e) {
-                axios.post("http://localhost:3000", {
-                    data: e.target.result
-                })
-                    .then(res => {
-                        console.log(res.data);
-                        const img = new Image;
-                        img.src = "data:image/jpg;base64," + res.data;
-                        document.body.appendChild(img);
-                    });
-            }
+        const fileInputs = document.querySelectorAll(".file");
+        const dropBox = document.querySelector("#dropBox");
+
+        function download(filename, data) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;base64,' + data);
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+
+
+
+        fileInputs.forEach(input => {
+            input.addEventListener("change", e => {
+                sendFile(e.target.files);
+            })
         })
+
+
+        async function sendFile(files) {
+            console.log(files);
+            const sendFiles = [];
+
+            function load(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    const fileName = file.name;
+
+                    reader.onload = function (e) {
+                        sendFiles.push({ base64: e.target.result, name: fileName })
+                        resolve();
+                    }
+                })
+            }
+
+            for (let i = 0; i < files.length; i++) {
+                console.log(files[i]);
+                await load(files[i])
+            }
+
+            console.log(sendFiles);
+            axios.post("http://localhost:2000", {
+                data: sendFiles
+            })
+                .then(res => {
+                    console.log(res.data);
+                    download("something.zip", res.data)
+                })
+        }
+
+
+
+
+
+
+
+
+        ["dragenter", "dragstart", "dragend", "dragleave", "dragover", "drag", "drop"].forEach(event => {
+            dropBox.addEventListener(event, e => {
+                e.preventDefault()
+            })
+        })
+
+        dropBox.ondrop = function (e) {
+            // ONLY ONE FILE
+            console.log(e.dataTransfer.files);
+            sendFile(e.dataTransfer.files);
+
+
+            console.log(e.dataTransfer);
+        }
+
+        dropBox.ondragover = function (e) {
+            console.log('drag over')
+        }
+        dropBox.ondragleave = function (e) {
+            console.log('drag leave')
+        }
     </script>
 </body>
 
